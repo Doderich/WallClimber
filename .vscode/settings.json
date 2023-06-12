@@ -1,0 +1,25 @@
+{
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+    "workbench.tree.indent": 30,
+    "workbench.colorCustomizations": {
+        "tree.indentGuidesStroke": "#0f0"
+    },
+    // "workbench.colorTheme": "Visual Studio Light",
+    "liveServer.settings.donotShowInfoMsg": true,
+    "window.zoomLevel": 1,
+    "git.autofetch": true,
+    "git.confirmSync": false,
+    "explorer.confirmDelete": false,
+    "liveServer.settings.useLocalIp": false,
+    "liveServer.settings.ChromeDebuggingAttachment": false,
+    "javascript.updateImportsOnFileMove.enabled": "always",
+    "extensions.ignoreRecommendations": true,
+    "liveServer.settings.ignoreFiles": [
+        ".vscode/**",
+        "**/*.scss",
+        "**/*.sass",
+        "**/*.ts"
+    ],
+    "liveServer.settings.port": 8080
+}
