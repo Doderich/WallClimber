@@ -1,7 +1,7 @@
 import * as THREE from "../99_Lib/three.module.min.js";
 import { keyboard } from "./keyboard.mjs";
 import { createVRcontrollers } from "./vr.mjs";
-let initalCursorPos;
+let initalCursorPos1, initalCursorPos2;
 
 let worldPosition = new THREE.Vector3(),
   worldRotation = new THREE.Quaternion(),
@@ -28,14 +28,21 @@ export function createLine(scene) {
   };
 }
 
-export function Ray(renderer, scene, world, cursor, objects) {
-  let position = new THREE.Vector3();
-  let rotation = new THREE.Quaternion();
-  let scale = new THREE.Vector3();
-  let endRay = new THREE.Vector3();
-  let direction = new THREE.Vector3();
+export function Ray(renderer, scene, world, cursor1, cursor2, objects) {
+  let position1 = new THREE.Vector3(),
+    position2 = new THREE.Vector3();
 
-  const raycaster = new THREE.Raycaster();
+  let rotation1 = new THREE.Quaternion(),
+    rotation2 = new THREE.Quaternion();
+  let scale1 = new THREE.Vector3(),
+    scale2 = new THREE.Vector3();
+  let endRay1 = new THREE.Vector3(),
+    endRay2 = new THREE.Vector3();
+  let direction1 = new THREE.Vector3(),
+    direction2 = new THREE.Vector3();
+
+  const raycaster1 = new THREE.Raycaster(),
+    raycaster2 = new THREE.Raycaster();
 
   let grabbed = false,
     squeezed = false;
@@ -49,16 +56,26 @@ export function Ray(renderer, scene, world, cursor, objects) {
     squeezed = state;
   });
 
-  let last_active_controller, last_active_inputsource;
+  let contrl1, info1, contrl2, info2;
   let { controller1, controller2 } = createVRcontrollers(
     scene,
     renderer,
     (current, src) => {
+      console.log("current", current);
+      console.log("src", src);
       // called if/when controllers connect
-      cursor.matrixAutoUpdate = false;
-      cursor.visible = false;
-      last_active_controller = current;
-      last_active_inputsource = src;
+      if (src.handedness === "left") {
+        cursor1.matrixAutoUpdate = false;
+        cursor1.visible = false;
+        contrl1 = current;
+        info1 = src;
+      } else {
+        cursor2.matrixAutoUpdate = false;
+        cursor2.visible = false;
+        contrl2 = current;
+        info2 = src;
+      }
+
       console.log(`connected ${src.handedness} device`);
       renderer.xr.enabled = true;
     }
@@ -79,41 +96,50 @@ export function Ray(renderer, scene, world, cursor, objects) {
   let deltaFlyRotation = new THREE.Quaternion();
 
   function updateRay() {
-    if (last_active_controller) {
-      cursor.matrix.copy(last_active_controller.matrix);
+    if (contrl1 || contrl2) {
+      cursor1.matrix.copy(contrl1.matrix);
+      cursor2.matrix.copy(contrl2.matrix);
       grabbed =
         controller1.controller.userData.isSelecting ||
         controller2.controller.userData.isSelecting;
       squeezed =
         controller1.controller.userData.isSqueezeing ||
         controller2.controller.userData.isSqueezeing;
-      direction.set(0, 0, -1);
+      direction1.set(0, 0, -1);
+      direction2.set(0, 0, -1);
     } else {
-      cursor.updateMatrix();
-      direction.set(0, 1, 0);
+      cursor1.updateMatrix();
+      cursor2.updateMatrix();
+      direction1.set(0, 1, 0);
+      direction2.set(0, 1, 0);
     }
 
     // Zerlegung der Matrix des Cursors in Translation, Rotation und Skalierung
-    cursor.matrix.decompose(position, rotation, scale);
+    cursor1.matrix.decompose(position1, rotation1, scale1);
+    cursor2.matrix.decompose(position2, rotation2, scale2);
     // Anwendung der CursorRotation auf Richtung
-    direction.applyQuaternion(rotation);
+    direction1.applyQuaternion(rotation1);
+    direction2.applyQuaternion(rotation2);
 
     // Startpunkt des "Laserstrahls" im Cursor
-    lineFunc(0, position);
+    lineFunc(0, position1);
+    lineFunc(0, position2);
 
     if (grabbedObject === undefined) {
-      raycaster.set(position, direction);
-      const intersects = raycaster.intersectObjects(objects);
+      raycaster1.set(position1, direction1);
+      raycaster2.set(position2, direction2);
+      const intersects1 = raycaster1.intersectObjects(objects);
+      const intersects2 = raycaster2.intersectObjects(objects);
 
-      if (intersects.length) {
-        lineFunc(1, intersects[0].point);
-        hitObject = intersects[0].object;
-        distance = intersects[0].distance;
+      if (intersects1.length) {
+        lineFunc(1, intersects1[0].point);
+        hitObject = intersects1[0].object;
+        distance = intersects1[0].distance;
       } else {
         // Endpunkt des "Laserstrahls": Startpunkt ist Cursor-Position,
         // Endpunkt berechnet aus Richtung und Startpunkt
-        endRay.addVectors(position, direction.multiplyScalar(20));
-        lineFunc(1, endRay);
+        endRay1.addVectors(position1, direction1.multiplyScalar(20));
+        lineFunc(1, endRay1);
         hitObject = undefined;
       }
     }
@@ -122,11 +148,11 @@ export function Ray(renderer, scene, world, cursor, objects) {
       if (grabbedObject) {
         // grabbedObject.matrix.copy(cursor.matrix.clone().multiply(initialGrabbed));
         //grabbedObject.matrix.copy(inverseWorld.clone().multiply(cursor.matrix).multiply(initialGrabbed));
-        endRay.addVectors(position, direction.multiplyScalar(distance));
-        lineFunc(1, endRay);
+        endRay1.addVectors(position1, direction1.multiplyScalar(distance1));
+        lineFunc(1, endRay1);
         let deltaPos = new THREE.Vector3();
-        console.log(initalCursorPos);
-        deltaPos.subVectors(initalCursorPos, position);
+        console.log(initalCursorPos1);
+        deltaPos.subVectors(initalCursorPos1, position1);
         console.log(deltaPos);
         deltaPos.x *= -0.2;
         deltaPos.z = 0;
@@ -140,7 +166,7 @@ export function Ray(renderer, scene, world, cursor, objects) {
         // initialGrabbed = cursor.matrix.clone().invert().multiply(grabbedObject.matrix);
 
         inverseWorld = world.matrix.clone().invert();
-        initialGrabbed = cursor.matrix.clone().invert().multiply(world.matrix);
+        initialGrabbed = cursor1.matrix.clone().invert().multiply(world.matrix);
         initalCursorPos = position.clone();
       }
     } else {
@@ -150,7 +176,7 @@ export function Ray(renderer, scene, world, cursor, objects) {
 
     if (squeezed) {
       if (inverseHand !== undefined) {
-        let differenceHand = cursor.matrix.clone().multiply(inverseHand);
+        let differenceHand = cursor1.matrix.clone().multiply(inverseHand);
         differenceHand.decompose(position, rotation, scale);
         deltaFlyRotation.set(0, 0, 0, 1);
         deltaFlyRotation.slerp(rotation.conjugate(), flySpeedRotationFactor);
@@ -161,7 +187,7 @@ export function Ray(renderer, scene, world, cursor, objects) {
         );
         world.matrix.premultiply(differenceMatrix);
       } else {
-        inverseHand = cursor.matrix.clone().invert();
+        inverseHand = cursor1.matrix.clone().invert();
       }
     } else {
       inverseHand = undefined;

@@ -50,8 +50,11 @@ window.onload = function () {
   camera.position.set(0, 0, 1);
   scene.add(camera);
   //
-  let cursor = add(1, scene);
-  mousecursor(cursor);
+  let cursor1 = add(1, scene);
+  mousecursor(cursor1);
+
+  let cursor2 = add(1, scene);
+  mousecursor(cursor2);
 
   let world = new THREE.Group();
   world.matrixAutoUpdate = false;
@@ -80,7 +83,7 @@ window.onload = function () {
   document.body.appendChild(renderer.domElement);
   document.body.appendChild(VRButton.createButton(renderer));
 
-  let ray = Ray(renderer, scene, world, cursor, objects);
+  let ray = Ray(renderer, scene, world, cursor1, cursor2, objects);
 
   function render() {
     ray.updateRay();
