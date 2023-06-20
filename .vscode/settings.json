@@ -24,8 +24,8 @@
   "liveServer.settings.port": 8080,
   "liveServer.settings.https": {
     "enable": true,
-    "cert": "/home/malteb/Dokumente/certs(1)/certs/MCI2.crt",
-    "key": "/home/malteb/Dokumente/certs(1)/certs/MCI2.key",
+    "cert": "P:\\OneDrive\\Dokumente\\certs\\MCI2.crt",
+    "key": "P:\\OneDrive\\Dokumente\\certs\\MCI2.key",
     "passphrase": "\"\""
   }
 }
