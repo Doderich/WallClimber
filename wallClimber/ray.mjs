@@ -1,7 +1,7 @@
 import * as THREE from "../99_Lib/three.module.min.js";
 import { keyboard } from "./keyboard.mjs";
 import { createVRcontrollers } from "./vr.mjs";
-let initalCursorPos;
+let first_initalCursorPos, second_initialCursorPos;
 
 let worldPosition = new THREE.Vector3(),
   worldRotation = new THREE.Quaternion(),
@@ -29,38 +29,45 @@ export function createLine(scene) {
 }
 
 export function Ray(renderer, scene, world, cursor, objects) {
-  let position = new THREE.Vector3();
-  let rotation = new THREE.Quaternion();
-  let scale = new THREE.Vector3();
-  let endRay = new THREE.Vector3();
-  let direction = new THREE.Vector3();
-
   const raycaster = new THREE.Raycaster();
 
-  let grabbed = false,
-    squeezed = false;
+  let first_grabbed = false,
+    first_squeezed = false;
+
+  let second_grabbed = false,
+    second_squeezed = false;
   keyboard(" ", (state) => {
     console.log("grabbed", state);
-    grabbed = state;
+    first_grabbed = state;
   });
 
   keyboard("s", (state) => {
     console.log("squeezed", state);
-    squeezed = state;
+    first_squeezed = state;
   });
 
-  let last_active_controller, last_active_inputsource;
+  let second_active_controller, second_active_inputsource;
+  let second_cursor = new THREE.Group();
+
+  let first_active_controller, first_active_inputsource;
   let { controller1, controller2 } = createVRcontrollers(
     scene,
     renderer,
     (current, src) => {
       // called if/when controllers connect
-      cursor.matrixAutoUpdate = false;
-      cursor.visible = false;
-      last_active_controller = current;
-      last_active_inputsource = src;
-      console.log(`connected ${src.handedness} device`);
-      renderer.xr.enabled = true;
+      if (first_active_controller === undefined) {
+        cursor.matrixAutoUpdate = false;
+        cursor.visible = false;
+        first_active_controller = current;
+        first_active_inputsource = src;
+        console.log(`connected ${src.handedness} device`);
+        renderer.xr.enabled = true;
+      } else {
+        second_active_controller = current;
+        second_cursor.matrixAutoUpdate = false;
+        second_cursor.visible = false;
+        second_active_inputsource = src;
+      }
     }
   );
 
@@ -79,21 +86,45 @@ export function Ray(renderer, scene, world, cursor, objects) {
   let deltaFlyRotation = new THREE.Quaternion();
 
   function updateRay() {
-    if (last_active_controller) {
-      cursor.matrix.copy(last_active_controller.matrix);
-      grabbed =
-        controller1.controller.userData.isSelecting ||
-        controller2.controller.userData.isSelecting;
-      squeezed =
-        controller1.controller.userData.isSqueezeing ||
-        controller2.controller.userData.isSqueezeing;
-      direction.set(0, 0, -1);
+    if (first_active_controller) {
+      cursor.matrix.copy(first_active_controller.matrix);
+      first_grabbed = controller1.controller.userData.isSelecting;
+      first_squeezed = controller1.controller.userData.isSqueezeing;
+      let direction, position, rotation, scale;
+      //direction.set(0, 0, -1);
     } else {
       cursor.updateMatrix();
-      direction.set(0, 1, 0);
+      //direction.set(0, 1, 0);
+    }
+    if (second_active_controller) {
+      second_cursor.matrix.copy(second_active_controller.matrix);
+      second_grabbed = controller2.controller.userData.isSelecting;
+      second_squeezed = controller2.controller.userData.isSqueezeing;
     }
 
-    // Zerlegung der Matrix des Cursors in Translation, Rotation und Skalierung
+    console.log("first_grabbed", first_grabbed);
+    console.log("first_squeezed", first_squeezed);
+    console.log("second_grabbed", second_grabbed);
+    console.log("second_squeezed", second_squeezed);
+
+    renderRay(cursor, first_squeezed, first_grabbed);
+    renderRay(second_cursor, second_squeezed, second_grabbed);
+  }
+
+  function renderRay(cursor, squeezed, grabbed) {
+    let initialGrabbed,
+      grabbedObject,
+      hitObject,
+      distance,
+      inverseHand,
+      inverseWorld,
+      initalCursorPos;
+    let position = new THREE.Vector3();
+    let rotation = new THREE.Quaternion();
+    let scale = new THREE.Vector3();
+    let endRay = new THREE.Vector3();
+    let direction = new THREE.Vector3();
+
     cursor.matrix.decompose(position, rotation, scale);
     // Anwendung der CursorRotation auf Richtung
     direction.applyQuaternion(rotation);
