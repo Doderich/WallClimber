@@ -50,8 +50,11 @@ window.onload = function () {
   camera.position.set(0, 0, 1);
   scene.add(camera);
   //
-  let cursor = add(1, scene);
-  mousecursor(cursor);
+  let cursor1 = add(1, scene);
+  mousecursor(cursor1);
+
+  let cursor2 = add(1, scene);
+  mousecursor(cursor2);
 
   let cursor2 = add(1, scene);
   mousecursor(cursor2);
@@ -82,6 +85,7 @@ window.onload = function () {
 
   document.body.appendChild(renderer.domElement);
   document.body.appendChild(VRButton.createButton(renderer));
+
 
   let ray = Ray(renderer, scene, world, cursor, cursor2, objects);
 

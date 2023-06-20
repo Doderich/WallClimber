@@ -53,6 +53,8 @@ export function Ray(renderer, scene, world, cursor, second_cursor, objects) {
     scene,
     renderer,
     (current, src) => {
+      console.log("current", current);
+      console.log("src", src);
       // called if/when controllers connect
       if (first_active_controller === undefined) {
         cursor.matrixAutoUpdate = false;
@@ -161,7 +163,8 @@ export function Ray(renderer, scene, world, cursor, second_cursor, objects) {
     cursor.matrix.decompose(position, rotation, scale);
     //console.log("position, rotation, scale", position, rotation, scale);
     // Anwendung der CursorRotation auf Richtung
-    direction.applyQuaternion(rotation);
+    direction1.applyQuaternion(rotation1);
+    direction2.applyQuaternion(rotation2);
 
     // Startpunkt des "Laserstrahls" im Cursor
     linefunc(0, position);
@@ -206,7 +209,7 @@ export function Ray(renderer, scene, world, cursor, second_cursor, objects) {
         console.log("grabbedObject", grabbedObject);
         console.log("hitObject", hitObject);
         inverseWorld = world.matrix.clone().invert();
-        initialGrabbed = cursor.matrix.clone().invert().multiply(world.matrix);
+        initialGrabbed = cursor1.matrix.clone().invert().multiply(world.matrix);
         initalCursorPos = position.clone();
       }
     } else {
