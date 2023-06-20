@@ -28,7 +28,7 @@ export function createLine(scene) {
   };
 }
 
-export function Ray(renderer, scene, world, cursor, objects) {
+export function Ray(renderer, scene, world, cursor, second_cursor, objects) {
   const raycaster = new THREE.Raycaster();
 
   let first_grabbed = false,
@@ -47,7 +47,6 @@ export function Ray(renderer, scene, world, cursor, objects) {
   });
 
   let second_active_controller, second_active_inputsource;
-  let second_cursor = new THREE.Group();
 
   let first_active_controller, first_active_inputsource;
   let { controller1, controller2 } = createVRcontrollers(
@@ -75,16 +74,6 @@ export function Ray(renderer, scene, world, cursor, objects) {
   const flySpeedRotationFactor = 0.01;
   const flySpeedTranslationFactor = -0.02;
 
-  let initialGrabbed,
-    grabbedObject,
-    hitObject,
-    distance,
-    inverseHand,
-    inverseWorld;
-  let differenceMatrix = new THREE.Matrix4();
-
-  let deltaFlyRotation = new THREE.Quaternion();
-
   function updateRay() {
     if (first_active_controller) {
       cursor.matrix.copy(first_active_controller.matrix);
@@ -102,11 +91,6 @@ export function Ray(renderer, scene, world, cursor, objects) {
       second_squeezed = controller2.controller.userData.isSqueezeing;
     }
 
-    console.log("first_grabbed", first_grabbed);
-    console.log("first_squeezed", first_squeezed);
-    console.log("second_grabbed", second_grabbed);
-    console.log("second_squeezed", second_squeezed);
-
     renderRay(cursor, first_squeezed, first_grabbed);
     renderRay(second_cursor, second_squeezed, second_grabbed);
   }
@@ -123,9 +107,13 @@ export function Ray(renderer, scene, world, cursor, objects) {
     let rotation = new THREE.Quaternion();
     let scale = new THREE.Vector3();
     let endRay = new THREE.Vector3();
-    let direction = new THREE.Vector3();
+    let direction = new THREE.Vector3(0, 0, -1);
+    let differenceMatrix = new THREE.Matrix4();
+
+    let deltaFlyRotation = new THREE.Quaternion();
 
     cursor.matrix.decompose(position, rotation, scale);
+    console.log("position, rotation, scale", position, rotation, scale);
     // Anwendung der CursorRotation auf Richtung
     direction.applyQuaternion(rotation);
 
@@ -136,7 +124,7 @@ export function Ray(renderer, scene, world, cursor, objects) {
       raycaster.set(position, direction);
       const intersects = raycaster.intersectObjects(objects);
 
-      if (intersects.length && intersects[0].distance < 0.1) {
+      if (intersects.length && intersects[0].distance < 1) {
         console.log(intersects[0].distance);
         lineFunc(1, intersects[0].point);
         hitObject = intersects[0].object;
@@ -144,7 +132,7 @@ export function Ray(renderer, scene, world, cursor, objects) {
       } else {
         // Endpunkt des "Laserstrahls": Startpunkt ist Cursor-Position,
         // Endpunkt berechnet aus Richtung und Startpunkt
-        endRay.addVectors(position, direction.multiplyScalar(0.3));
+        endRay.addVectors(position, direction.multiplyScalar(10)); //0.3
         lineFunc(1, endRay);
         hitObject = undefined;
       }
@@ -152,8 +140,6 @@ export function Ray(renderer, scene, world, cursor, objects) {
 
     if (grabbed) {
       if (grabbedObject) {
-        // grabbedObject.matrix.copy(cursor.matrix.clone().multiply(initialGrabbed));
-        //grabbedObject.matrix.copy(inverseWorld.clone().multiply(cursor.matrix).multiply(initialGrabbed));
         endRay.addVectors(position, direction.multiplyScalar(distance));
         lineFunc(1, endRay);
         let deltaPos = new THREE.Vector3();
@@ -169,7 +155,6 @@ export function Ray(renderer, scene, world, cursor, objects) {
         world.matrix.compose(worldPosition, worldRotation, worldScale);
       } else if (hitObject) {
         grabbedObject = hitObject;
-        // initialGrabbed = cursor.matrix.clone().invert().multiply(grabbedObject.matrix);
 
         inverseWorld = world.matrix.clone().invert();
         initialGrabbed = cursor.matrix.clone().invert().multiply(world.matrix);
