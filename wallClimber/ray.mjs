@@ -1,7 +1,6 @@
 import * as THREE from "../99_Lib/three.module.min.js";
 import { keyboard } from "./keyboard.mjs";
 import { createVRcontrollers } from "./vr.mjs";
-let initalCursorPos1, initalCursorPos2;
 
 let worldPosition = new THREE.Vector3(),
   worldRotation = new THREE.Quaternion(),
@@ -28,35 +27,28 @@ export function createLine(scene) {
   };
 }
 
-export function Ray(renderer, scene, world, cursor1, cursor2, objects) {
-  let position1 = new THREE.Vector3(),
-    position2 = new THREE.Vector3();
+export function Ray(renderer, scene, world, cursor, second_cursor, objects) {
+  const raycaster = new THREE.Raycaster();
+  const direction1 = new THREE.Vector3();
+  const direction2 = new THREE.Vector3();
 
-  let rotation1 = new THREE.Quaternion(),
-    rotation2 = new THREE.Quaternion();
-  let scale1 = new THREE.Vector3(),
-    scale2 = new THREE.Vector3();
-  let endRay1 = new THREE.Vector3(),
-    endRay2 = new THREE.Vector3();
-  let direction1 = new THREE.Vector3(),
-    direction2 = new THREE.Vector3();
+  let first_grabbed = false,
+    first_squeezed = false;
 
-  const raycaster1 = new THREE.Raycaster(),
-    raycaster2 = new THREE.Raycaster();
-
-  let grabbed = false,
-    squeezed = false;
+  let second_grabbed = false,
+    second_squeezed = false;
   keyboard(" ", (state) => {
     console.log("grabbed", state);
-    grabbed = state;
+    first_grabbed = state;
   });
 
   keyboard("s", (state) => {
     console.log("squeezed", state);
-    squeezed = state;
+    first_squeezed = state;
   });
 
-  let contrl1, info1, contrl2, info2;
+  let second_active_controller, second_active_inputsource;
+  let first_active_controller, first_active_inputsource;
   let { controller1, controller2 } = createVRcontrollers(
     scene,
     renderer,
@@ -64,107 +56,158 @@ export function Ray(renderer, scene, world, cursor1, cursor2, objects) {
       console.log("current", current);
       console.log("src", src);
       // called if/when controllers connect
-      if (src.handedness === "left") {
-        cursor1.matrixAutoUpdate = false;
-        cursor1.visible = false;
-        contrl1 = current;
-        info1 = src;
+      if (first_active_controller === undefined) {
+        cursor.matrixAutoUpdate = false;
+        cursor.visible = false;
+        first_active_controller = current;
+        first_active_inputsource = src;
+        console.log(`connected ${src.handedness} device`);
+        renderer.xr.enabled = true;
       } else {
-        cursor2.matrixAutoUpdate = false;
-        cursor2.visible = false;
-        contrl2 = current;
-        info2 = src;
+        second_active_controller = current;
+        second_cursor.matrixAutoUpdate = false;
+        second_cursor.visible = false;
+        console.log(`connected ${src.handedness} device`);
+        second_active_inputsource = src;
       }
-
-      console.log(`connected ${src.handedness} device`);
-      renderer.xr.enabled = true;
     }
   );
 
   const lineFunc = createLine(scene);
+  const lineFunc2 = createLine(scene);
   const flySpeedRotationFactor = 0.01;
   const flySpeedTranslationFactor = -0.02;
-
-  let initialGrabbed,
-    grabbedObject,
-    hitObject,
-    distance,
-    inverseHand,
-    inverseWorld;
-  let differenceMatrix = new THREE.Matrix4();
-
-  let deltaFlyRotation = new THREE.Quaternion();
+  let grabbedObject1, grabbedObject2;
+  let initialGrabbed1, initialGrabbed2;
+  let hitObject1, hitObject2;
+  let initialCursorPos1, initialCursorPos2;
 
   function updateRay() {
-    if (contrl1 || contrl2) {
-      cursor1.matrix.copy(contrl1.matrix);
-      cursor2.matrix.copy(contrl2.matrix);
-      grabbed =
-        controller1.controller.userData.isSelecting ||
-        controller2.controller.userData.isSelecting;
-      squeezed =
-        controller1.controller.userData.isSqueezeing ||
-        controller2.controller.userData.isSqueezeing;
-      direction1.set(0, 0, -1);
-      direction2.set(0, 0, -1);
+    direction1.set(0, 0, -1);
+    direction2.set(0, 0, -1);
+    if (first_active_controller) {
+      cursor.matrix.copy(first_active_controller.matrix);
+      first_grabbed = controller1.controller.userData.isSelecting;
+      first_squeezed = controller1.controller.userData.isSqueezeing;
     } else {
-      cursor1.updateMatrix();
-      cursor2.updateMatrix();
-      direction1.set(0, 1, 0);
-      direction2.set(0, 1, 0);
+      cursor.updateMatrix();
+    }
+    if (second_active_controller) {
+      second_cursor.matrix.copy(second_active_controller.matrix);
+      second_grabbed = controller2.controller.userData.isSelecting;
+      second_squeezed = controller2.controller.userData.isSqueezeing;
+    } else {
+      second_cursor.updateMatrix();
     }
 
-    // Zerlegung der Matrix des Cursors in Translation, Rotation und Skalierung
-    cursor1.matrix.decompose(position1, rotation1, scale1);
-    cursor2.matrix.decompose(position2, rotation2, scale2);
+    [grabbedObject1, hitObject1, initialGrabbed1, initialCursorPos1] =
+      renderRay(
+        cursor,
+        first_squeezed,
+        first_grabbed,
+        lineFunc,
+        direction1,
+        grabbedObject1,
+        hitObject1,
+        initialGrabbed1,
+        initialCursorPos1,
+        (first_grabbed || second_grabbed) && !(first_grabbed && second_grabbed)
+      );
+    [grabbedObject2, hitObject2, initialGrabbed2, initialCursorPos2] =
+      renderRay(
+        second_cursor,
+        second_squeezed,
+        second_grabbed,
+        lineFunc2,
+        direction2,
+        grabbedObject2,
+        hitObject2,
+        initialGrabbed2,
+        initialCursorPos2,
+        (first_grabbed || second_grabbed) && !(first_grabbed && second_grabbed)
+      );
+
+    if (!grabbedObject1 && !grabbedObject2) {
+      if (worldPosition.y < 0) {
+        let deltaPos = new THREE.Vector3();
+        deltaPos.x = 0;
+        deltaPos.z = 0;
+        deltaPos.y = 0.03;
+        console.log("deltaPos", deltaPos);
+
+        world.matrix.decompose(worldPosition, worldRotation, worldScale);
+        worldPosition.add(deltaPos);
+        world.matrix.compose(worldPosition, worldRotation, worldScale);
+      }
+    }
+  }
+
+  function renderRay(
+    cursor,
+    squeezed,
+    grabbed,
+    linefunc,
+    direction,
+    grabbedObject,
+    hitObject,
+    initialGrabbed,
+    initalCursorPos,
+    isOnlyOneGrabbedactive
+  ) {
+    let distance, inverseHand, inverseWorld;
+    let position = new THREE.Vector3();
+    let rotation = new THREE.Quaternion();
+    let scale = new THREE.Vector3();
+    let endRay = new THREE.Vector3();
+
+    cursor.matrix.decompose(position, rotation, scale);
+    //console.log("position, rotation, scale", position, rotation, scale);
     // Anwendung der CursorRotation auf Richtung
     direction1.applyQuaternion(rotation1);
     direction2.applyQuaternion(rotation2);
 
     // Startpunkt des "Laserstrahls" im Cursor
-    lineFunc(0, position1);
-    lineFunc(0, position2);
+    linefunc(0, position);
 
     if (grabbedObject === undefined) {
-      raycaster1.set(position1, direction1);
-      raycaster2.set(position2, direction2);
-      const intersects1 = raycaster1.intersectObjects(objects);
-      const intersects2 = raycaster2.intersectObjects(objects);
+      raycaster.set(position, direction);
+      const intersects = raycaster.intersectObjects(objects);
 
-      if (intersects1.length) {
-        lineFunc(1, intersects1[0].point);
-        hitObject = intersects1[0].object;
-        distance = intersects1[0].distance;
+      if (intersects.length && intersects[0].distance < 0.3) {
+        linefunc(1, intersects[0].point);
+        hitObject = intersects[0].object;
+        distance = intersects[0].distance;
       } else {
         // Endpunkt des "Laserstrahls": Startpunkt ist Cursor-Position,
         // Endpunkt berechnet aus Richtung und Startpunkt
-        endRay1.addVectors(position1, direction1.multiplyScalar(20));
-        lineFunc(1, endRay1);
+        endRay.addVectors(position, direction.multiplyScalar(0.3)); //0.3
+        linefunc(1, endRay);
         hitObject = undefined;
       }
     }
 
-    if (grabbed) {
-      if (grabbedObject) {
-        // grabbedObject.matrix.copy(cursor.matrix.clone().multiply(initialGrabbed));
-        //grabbedObject.matrix.copy(inverseWorld.clone().multiply(cursor.matrix).multiply(initialGrabbed));
-        endRay1.addVectors(position1, direction1.multiplyScalar(distance1));
-        lineFunc(1, endRay1);
+    if (grabbed && squeezed) {
+      console.log("grabbed");
+      if (grabbedObject !== undefined) {
+        console.log("im in");
+        endRay.addVectors(position, direction.multiplyScalar(distance));
+        linefunc(1, endRay);
         let deltaPos = new THREE.Vector3();
-        console.log(initalCursorPos1);
-        deltaPos.subVectors(initalCursorPos1, position1);
-        console.log(deltaPos);
-        deltaPos.x *= -0.2;
+        deltaPos.subVectors(initalCursorPos, position);
+        deltaPos.x *= -0.1;
         deltaPos.z = 0;
-        deltaPos.y *= -0.2;
+        deltaPos.y *= -0.1;
+        console.log("deltaPos", deltaPos);
 
-        world.matrix.decompose(worldPosition, worldRotation, worldScale);
-        worldPosition.add(deltaPos);
-        world.matrix.compose(worldPosition, worldRotation, worldScale);
+        if (isOnlyOneGrabbedactive) {
+          world.matrix.decompose(worldPosition, worldRotation, worldScale);
+          worldPosition.add(deltaPos);
+          world.matrix.compose(worldPosition, worldRotation, worldScale);
+        }
       } else if (hitObject) {
         grabbedObject = hitObject;
-        // initialGrabbed = cursor.matrix.clone().invert().multiply(grabbedObject.matrix);
-
+        console.log("grabbedObject", grabbedObject);
+        console.log("hitObject", hitObject);
         inverseWorld = world.matrix.clone().invert();
         initialGrabbed = cursor1.matrix.clone().invert().multiply(world.matrix);
         initalCursorPos = position.clone();
@@ -173,25 +216,10 @@ export function Ray(renderer, scene, world, cursor1, cursor2, objects) {
       grabbedObject = undefined;
       initalCursorPos = undefined;
     }
+    // console.log("hitObject", hitObject);
+    // console.log("distance", distance);
 
-    if (squeezed) {
-      if (inverseHand !== undefined) {
-        let differenceHand = cursor1.matrix.clone().multiply(inverseHand);
-        differenceHand.decompose(position, rotation, scale);
-        deltaFlyRotation.set(0, 0, 0, 1);
-        deltaFlyRotation.slerp(rotation.conjugate(), flySpeedRotationFactor);
-        differenceMatrix.compose(
-          position.multiplyScalar(flySpeedTranslationFactor),
-          deltaFlyRotation,
-          scale
-        );
-        world.matrix.premultiply(differenceMatrix);
-      } else {
-        inverseHand = cursor1.matrix.clone().invert();
-      }
-    } else {
-      inverseHand = undefined;
-    }
+    return [grabbedObject, hitObject, initialGrabbed, initalCursorPos];
   }
 
   return { updateRay };

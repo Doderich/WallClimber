@@ -21,5 +21,11 @@
     "**/*.sass",
     "**/*.ts"
   ],
-  "liveServer.settings.port": 8080
+  "liveServer.settings.port": 8080,
+  "liveServer.settings.https": {
+    "enable": true,
+    "cert": "P:\\OneDrive\\Dokumente\\certs\\MCI2.crt",
+    "key": "P:\\OneDrive\\Dokumente\\certs\\MCI2.key",
+    "passphrase": "\"\""
+  }
 }

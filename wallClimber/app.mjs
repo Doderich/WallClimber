@@ -56,6 +56,9 @@ window.onload = function () {
   let cursor2 = add(1, scene);
   mousecursor(cursor2);
 
+  let cursor2 = add(1, scene);
+  mousecursor(cursor2);
+
   let world = new THREE.Group();
   world.matrixAutoUpdate = false;
   world.rotation.y = Math.PI;
@@ -83,7 +86,8 @@ window.onload = function () {
   document.body.appendChild(renderer.domElement);
   document.body.appendChild(VRButton.createButton(renderer));
 
-  let ray = Ray(renderer, scene, world, cursor1, cursor2, objects);
+
+  let ray = Ray(renderer, scene, world, cursor, cursor2, objects);
 
   function render() {
     ray.updateRay();
