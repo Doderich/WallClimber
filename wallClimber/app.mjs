@@ -1,6 +1,7 @@
 // import * as THREE from '../99_Lib/three.module.min.js';
 import * as THREE from "three";
 import { VRButton } from "three/addons/webxr/VRButton.js";
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 import { mousecursor } from "./mousecursor.mjs";
 import { Ray } from "./ray.mjs";
@@ -32,6 +33,16 @@ function add(i, parent, x = 0, y = 0, z = 0) {
   parent.add(object);
   return object;
 }
+
+function addCustom(object, parent, x = 0, y = 0, z = 0){
+  object.position.set(x, y, z);
+  object.updateMatrix();
+  object.matrixAutoUpdate = false;
+  parent.add(object);
+  return object;
+
+}
+
 
 window.onload = function () {
   let scene = new THREE.Scene();
@@ -67,20 +78,27 @@ window.onload = function () {
       objects.push(add(2, world, x, y, 0));
     }
   }
-
+  
   let renderer = new THREE.WebGLRenderer({
     antialias: true,
     alpha: false,
   });
-
+  
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setClearColor(0xaaaaaa, 1);
 
   document.body.appendChild(renderer.domElement);
   document.body.appendChild(VRButton.createButton(renderer));
-
+  
   let ray = Ray(renderer, scene, world, cursor, objects);
+  
+  const loader = new GLTFLoader();
+  loader.load( 'testobj.glb', function ( gltf ) {
+    addCustom(gltf.scene, world, 1.2, 0, -0.3);
+  }, undefined, function ( error ) {
+    console.error( error );
+  } );
 
   function render() {
     ray.updateRay();

@@ -102,11 +102,6 @@ export function Ray(renderer, scene, world, cursor, objects) {
       second_squeezed = controller2.controller.userData.isSqueezeing;
     }
 
-    console.log("first_grabbed", first_grabbed);
-    console.log("first_squeezed", first_squeezed);
-    console.log("second_grabbed", second_grabbed);
-    console.log("second_squeezed", second_squeezed);
-
     renderRay(cursor, first_squeezed, first_grabbed);
     renderRay(second_cursor, second_squeezed, second_grabbed);
   }
