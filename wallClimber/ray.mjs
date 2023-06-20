@@ -105,14 +105,15 @@ export function Ray(renderer, scene, world, cursor, objects) {
       raycaster.set(position, direction);
       const intersects = raycaster.intersectObjects(objects);
 
-      if (intersects.length) {
+      if (intersects.length && intersects[0].distance < 0.1) {
+        console.log(intersects[0].distance);
         lineFunc(1, intersects[0].point);
         hitObject = intersects[0].object;
         distance = intersects[0].distance;
       } else {
         // Endpunkt des "Laserstrahls": Startpunkt ist Cursor-Position,
         // Endpunkt berechnet aus Richtung und Startpunkt
-        endRay.addVectors(position, direction.multiplyScalar(20));
+        endRay.addVectors(position, direction.multiplyScalar(0.3));
         lineFunc(1, endRay);
         hitObject = undefined;
       }
