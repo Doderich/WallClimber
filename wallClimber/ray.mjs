@@ -192,9 +192,9 @@ export function Ray(renderer, scene, world, cursor, second_cursor, objects) {
         linefunc(1, endRay);
         let deltaPos = new THREE.Vector3();
         deltaPos.subVectors(initalCursorPos, position);
-        deltaPos.x *= -0.1;
-        deltaPos.z = 0;
-        deltaPos.y *= -0.1;
+        deltaPos.x *= -0.01;
+        deltaPos.z = 0; //0;
+        deltaPos.y *= -0.01;
         console.log("deltaPos", deltaPos);
 
         if (isOnlyOneGrabbedactive) {

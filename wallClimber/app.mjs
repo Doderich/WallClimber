@@ -88,25 +88,29 @@ window.onload = function () {
 
   let objects = [];
 
-  for (let y = 0; y < 4; y += 0.5) {
-    for (let x = -2; x < 2; x += 0.5) {
-      loader.load(
-        "assets/rock1.glb",
-        function (gltf) {
-          addCustom(gltf.scene, world, x, y, -0.3, 0.1);
-          objects.push(gltf.scene);
-        },
-        undefined,
-        function (error) {
-          console.error(error);
-        }
-      );
-    }
+  for (let i = 0; i < 100; i++) {
+    loader.load(
+      "assets/rock1.glb",
+      function (gltf) {
+        addCustom(
+          gltf.scene,
+          world,
+          getRandom(-5, 5),
+          getRandom(0, 10),
+          -0.5,
+          0.1
+        );
+        objects.push(gltf.scene);
+      },
+      undefined,
+      function (error) {
+        console.error(error);
+      }
+    );
   }
 
-  loader.load("assets/cave1.glb", function (gltf) {
-    addCustom(gltf.scene, world, 5, -5, -0.3);
-    objects.push(gltf.scene);
+  loader.load("assets/mci2MAP.glb", function (gltf) {
+    addCustom(gltf.scene, world, -5, 0, -0.4);
   });
 
   let ray = Ray(renderer, scene, world, cursor1, cursor2, objects);
@@ -116,3 +120,6 @@ window.onload = function () {
   }
   renderer.setAnimationLoop(render);
 };
+
+const getRandom = (min, max) =>
+  Math.floor(Math.random() * (max - min + 1) + min);
